@@ -1,0 +1,35 @@
+name: Ci-Build
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        target:
+          - aarch64-linux-android
+          - armv7-linux-androideabi
+          - x86_64-linux-android
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract zip
+        run: |
+          for z in *.zip; do unzip -oq "$z"; done
+      - name: Setup Rust
+        run: rustup update stable
+      - name: Install cargo ndk
+        run: cargo install cargo-ndk
+      - name: Install target
+        run: rustup target add ${{ matrix.target }}
+      - name: Build
+        run: |
+          cd "$(dirname "$(find . -name Cargo.toml | head -n 1)")"
+          cargo ndk -t ${{ matrix.target }} build --profile githubci
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: mtbinloader2-${{ matrix.target }}
+          path: "**/target/${{ matrix.target }}/githubci/libmtbinloader2.so"
